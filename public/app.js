@@ -27,6 +27,8 @@ const SPRINT_STATE_LABELS = {
   closed: "Encerrada"
 };
 
+const AUTO_SYNC_INTERVAL_MS = 7000;
+
 const state = {
   project: null,
   meta: null,
@@ -41,6 +43,10 @@ const state = {
   },
   selectedIssueId: null
 };
+
+let autoSyncTimer = null;
+let autoSyncRunning = false;
+let lastDataSignature = "";
 
 const dom = {
   projectTitle: document.getElementById("project-title"),
@@ -176,6 +182,24 @@ function toDateLabel(dateStr) {
   return d.toLocaleDateString("pt-BR");
 }
 
+function buildDataSignature(sprints, issues) {
+  const sprintSig = [...(sprints || [])]
+    .map((s) => `${s.id}|${s.updatedAt || ""}|${s.state}|${s.startDate}|${s.endDate}`)
+    .sort()
+    .join("~");
+
+  const issueSig = [...(issues || [])]
+    .map((i) => `${i.id}|${i.updatedAt || ""}|${i.status}|${i.sprintId || ""}`)
+    .sort()
+    .join("~");
+
+  return `${sprintSig}##${issueSig}`;
+}
+
+function updateDataSignatureFromState() {
+  lastDataSignature = buildDataSignature(state.sprints, state.issues);
+}
+
 function setSelectOptions(selectEl, values, config = {}) {
   if (!selectEl) return;
   const { placeholder = "", labelFn = (value) => value } = config;
@@ -265,6 +289,7 @@ async function loadInitialData() {
   state.meta = meta;
   state.sprints = sprints;
   state.issues = issues;
+  updateDataSignatureFromState();
   render();
 }
 
@@ -539,7 +564,9 @@ function openIssueDialog(issueId) {
   dom.issueEditForm.elements.description.value = issue.description || "";
 
   renderComments(issue.comments || []);
-  dom.issueDialog.showModal();
+  if (!dom.issueDialog.open) {
+    dom.issueDialog.showModal();
+  }
 }
 
 function renderComments(comments) {
@@ -564,11 +591,56 @@ function renderComments(comments) {
 
 async function reloadIssues() {
   state.issues = await api("/api/issues");
+  updateDataSignatureFromState();
   render();
 }
 
 async function reloadSprints() {
   state.sprints = await api("/api/sprints");
+  updateDataSignatureFromState();
+}
+
+async function autoSyncNow() {
+  if (autoSyncRunning) return;
+  autoSyncRunning = true;
+  try {
+    const [nextSprints, nextIssues] = await Promise.all([api("/api/sprints"), api("/api/issues")]);
+    const nextSignature = buildDataSignature(nextSprints, nextIssues);
+    if (nextSignature !== lastDataSignature) {
+      state.sprints = nextSprints;
+      state.issues = nextIssues;
+      lastDataSignature = nextSignature;
+      render();
+
+      if (state.selectedIssueId) {
+        const selected = issueById(state.selectedIssueId);
+        if (!selected) {
+          if (dom.issueDialog.open) dom.issueDialog.close();
+          state.selectedIssueId = null;
+        } else if (dom.issueDialog.open) {
+          openIssueDialog(state.selectedIssueId);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("auto sync failed:", error);
+  } finally {
+    autoSyncRunning = false;
+  }
+}
+
+function startAutoSync() {
+  stopAutoSync();
+  autoSyncTimer = setInterval(() => {
+    autoSyncNow();
+  }, AUTO_SYNC_INTERVAL_MS);
+}
+
+function stopAutoSync() {
+  if (autoSyncTimer) {
+    clearInterval(autoSyncTimer);
+    autoSyncTimer = null;
+  }
 }
 
 async function updateIssue(issueId, payload) {
@@ -765,6 +837,23 @@ function bindEvents() {
     onFilterChange();
     notify("Filtros limpos.", { type: "info" });
   });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopAutoSync();
+      return;
+    }
+    autoSyncNow();
+    startAutoSync();
+  });
+
+  window.addEventListener("focus", () => {
+    autoSyncNow();
+  });
+
+  window.addEventListener("beforeunload", () => {
+    stopAutoSync();
+  });
 }
 
 async function boot() {
@@ -772,6 +861,7 @@ async function boot() {
   setDefaultSprintDates();
   try {
     await loadInitialData();
+    startAutoSync();
   } catch (error) {
     console.error(error);
     notify(`Falha ao carregar Jira local: ${error.message}`, {
