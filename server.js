@@ -5,7 +5,9 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3333;
 
-const DATA_DIR = path.join(__dirname, "data");
+const IS_VERCEL = Boolean(process.env.VERCEL);
+const RUNTIME_DATA_ROOT = process.env.DATA_DIR || (IS_VERCEL ? path.join("/tmp", "arbogame-jira") : __dirname);
+const DATA_DIR = path.join(RUNTIME_DATA_ROOT, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 const STATUSES = ["Backlog", "To Do", "In Progress", "In Review", "Done"];
