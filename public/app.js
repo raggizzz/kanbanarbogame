@@ -27,7 +27,7 @@ const SPRINT_STATE_LABELS = {
   closed: "Encerrada"
 };
 
-const AUTO_SYNC_INTERVAL_MS = 7000;
+const FALLBACK_SYNC_INTERVAL_MS = 12000;
 
 const state = {
   project: null,
@@ -47,6 +47,10 @@ const state = {
 let autoSyncTimer = null;
 let autoSyncRunning = false;
 let lastDataSignature = "";
+let realtimeClient = null;
+let realtimeChannels = [];
+let realtimeSyncTimer = null;
+let realtimeNotified = false;
 
 const dom = {
   projectTitle: document.getElementById("project-title"),
@@ -198,6 +202,10 @@ function buildDataSignature(sprints, issues) {
 
 function updateDataSignatureFromState() {
   lastDataSignature = buildDataSignature(state.sprints, state.issues);
+}
+
+function hasRealtimeActive() {
+  return Boolean(realtimeClient) && realtimeChannels.length > 0;
 }
 
 function setSelectOptions(selectEl, values, config = {}) {
@@ -629,17 +637,98 @@ async function autoSyncNow() {
   }
 }
 
+function scheduleRealtimeSync() {
+  if (realtimeSyncTimer) return;
+  realtimeSyncTimer = setTimeout(() => {
+    realtimeSyncTimer = null;
+    autoSyncNow();
+  }, 250);
+}
+
 function startAutoSync() {
   stopAutoSync();
   autoSyncTimer = setInterval(() => {
     autoSyncNow();
-  }, AUTO_SYNC_INTERVAL_MS);
+  }, FALLBACK_SYNC_INTERVAL_MS);
 }
 
 function stopAutoSync() {
   if (autoSyncTimer) {
     clearInterval(autoSyncTimer);
     autoSyncTimer = null;
+  }
+}
+
+function stopRealtimeSync() {
+  if (realtimeSyncTimer) {
+    clearTimeout(realtimeSyncTimer);
+    realtimeSyncTimer = null;
+  }
+  if (realtimeClient) {
+    for (const channel of realtimeChannels) {
+      realtimeClient.removeChannel(channel);
+    }
+  }
+  realtimeChannels = [];
+  realtimeClient = null;
+}
+
+async function getRealtimeConfig() {
+  try {
+    return await api("/api/realtime-config");
+  } catch (error) {
+    console.error("realtime config failed:", error);
+    return { enabled: false, supabaseUrl: "", supabaseAnonKey: "" };
+  }
+}
+
+async function startRealtimeSync() {
+  const config = await getRealtimeConfig();
+  const hasSdk = Boolean(window.supabase && typeof window.supabase.createClient === "function");
+  if (!config.enabled || !hasSdk) {
+    startAutoSync();
+    return false;
+  }
+
+  try {
+    realtimeClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+
+    const watchedTables = ["issues", "sprints", "comments", "users"];
+    for (const table of watchedTables) {
+      const channel = realtimeClient.channel(`realtime:${table}`);
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table },
+        () => {
+          scheduleRealtimeSync();
+        }
+      );
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED" && !realtimeNotified) {
+          realtimeNotified = true;
+          notify("Sincronizacao em tempo real ativa.", {
+            type: "success",
+            title: "Supabase Realtime",
+            timeout: 2200
+          });
+        }
+      });
+      realtimeChannels.push(channel);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("realtime startup failed:", error);
+    stopRealtimeSync();
+    startAutoSync();
+    notify("Realtime indisponivel. Usando sincronizacao automatica padrao.", {
+      type: "info",
+      title: "Fallback de sync",
+      timeout: 2600
+    });
+    return false;
   }
 }
 
@@ -840,11 +929,15 @@ function bindEvents() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      stopAutoSync();
+      if (!hasRealtimeActive()) {
+        stopAutoSync();
+      }
       return;
     }
     autoSyncNow();
-    startAutoSync();
+    if (!hasRealtimeActive()) {
+      startAutoSync();
+    }
   });
 
   window.addEventListener("focus", () => {
@@ -853,6 +946,7 @@ function bindEvents() {
 
   window.addEventListener("beforeunload", () => {
     stopAutoSync();
+    stopRealtimeSync();
   });
 }
 
@@ -861,7 +955,7 @@ async function boot() {
   setDefaultSprintDates();
   try {
     await loadInitialData();
-    startAutoSync();
+    await startRealtimeSync();
   } catch (error) {
     console.error(error);
     notify(`Falha ao carregar Jira local: ${error.message}`, {

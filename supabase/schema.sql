@@ -95,3 +95,38 @@ values
   ('Raissa'),
   ('Jasmine')
 on conflict (name) do nothing;
+
+-- Realtime publication setup (idempotente)
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.projects;
+  exception
+    when duplicate_object then null;
+    when undefined_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.users;
+  exception
+    when duplicate_object then null;
+    when undefined_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.sprints;
+  exception
+    when duplicate_object then null;
+    when undefined_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.issues;
+  exception
+    when duplicate_object then null;
+    when undefined_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.comments;
+  exception
+    when duplicate_object then null;
+    when undefined_object then null;
+  end;
+end $$;

@@ -963,6 +963,18 @@ app.get(
 );
 
 app.get(
+  "/api/realtime-config",
+  asyncRoute(async (req, res) => {
+    await ensureProviderReady();
+    res.json({
+      enabled: USE_SUPABASE,
+      supabaseUrl: USE_SUPABASE ? SUPABASE_URL : "",
+      supabaseAnonKey: USE_SUPABASE ? SUPABASE_ANON_KEY : ""
+    });
+  })
+);
+
+app.get(
   "/api/project",
   asyncRoute(async (req, res) => {
     await ensureProviderReady();
