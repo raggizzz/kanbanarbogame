@@ -1,5 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+
+process.env.SUPABASE_ENABLED = "false";
+
 const { app, ensureDataFile } = require("../server");
 
 ensureDataFile();

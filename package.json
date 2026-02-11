@@ -16,6 +16,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "dotenv": "^17.2.4",
     "express": "^4.21.2"
   }
 }

@@ -1,57 +1,64 @@
-# ArboGame Jira Local
+# ArboGame Jira
 
-Jira local completo para o projeto **ArboGame**, com:
+Jira-like board para o projeto ArboGame com:
 
-- Board Kanban (`Backlog`, `To Do`, `In Progress`, `In Review`, `Done`)
-- CRUD de tickets (criar, editar, mover, excluir)
-- Comentarios por ticket
-- Filtros por texto, status, prioridade, responsavel e sprint
-- Dados persistidos em `data/db.json` (local)
-- Seed inicial do projeto `ARBO`
+- Board Kanban
+- CRUD de tickets
+- Comentarios
+- Sprints (criar, editar, excluir)
+- Persistencia em Supabase
 
-## Requisitos
+## 1. Configurar Supabase
 
-- Node.js 18+ (recomendado 20+)
+1. Abra o SQL Editor do seu projeto Supabase.
+2. Execute o script: `supabase/schema.sql`.
 
-## Como rodar
+Isso cria todas as tabelas, policies e seed inicial.
+
+## 2. Variaveis de ambiente
+
+Crie um `.env` na raiz:
+
+```env
+SUPABASE_ENABLED=true
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
+
+Ja existe `.env.example` como referencia.
+
+## 3. Rodar local
 
 ```bash
 npm install
 npm start
 ```
 
-Abra:
+Aplicacao:
 
 ```text
 http://localhost:3333
 ```
 
-## Desenvolvimento
+Health check:
 
-```bash
-npm run dev
+```text
+http://localhost:3333/api/health
 ```
 
-## Teste de fumaca (API)
+## 4. Testes
 
 ```bash
 npm test
 ```
 
-O teste valida:
+Observacao: o teste de fumaca roda em modo local (sem Supabase) para ser deterministico.
 
-- saude da API
-- criacao de sprint
-- exclusao de sprint
-- criacao de ticket
-- mudanca de status
-- insercao de comentario
-- leitura de ticket
-- exclusao de ticket
+## 5. Deploy Vercel
 
-## Deploy na Vercel
+Este repositorio ja inclui:
 
-- Este repositorio possui `vercel.json` e `api/index.js` para rodar como Serverless Function.
-- Em ambiente Vercel, o arquivo de dados usa storage temporario:
-  ` /tmp/arbogame-jira/data/db.json`.
-- Isso evita crash `FUNCTION_INVOCATION_FAILED`, mas os dados podem ser resetados entre execucoes.
+- `vercel.json`
+- `api/index.js`
+
+No deploy, mantenha as mesmas variaveis de ambiente (`SUPABASE_*`) no painel da Vercel.

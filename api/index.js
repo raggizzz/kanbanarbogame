@@ -1,5 +1,3 @@
-const { app, ensureDataFile } = require("../server");
-
-ensureDataFile();
+const { app } = require("../server");
 
 module.exports = app;
