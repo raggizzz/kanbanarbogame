@@ -1,0 +1,21 @@
+{
+  "name": "arbogame-jira-local",
+  "version": "1.0.0",
+  "description": "Jira-like board for ArboGame project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test/smoke.test.js"
+  },
+  "keywords": [
+    "jira",
+    "kanban",
+    "arbogame"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

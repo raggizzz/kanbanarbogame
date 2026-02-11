@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ArboGame Board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar card-shell">
+      <div class="brand-block">
+        <img src="/logo.jpeg" alt="Logo ArboGame" class="brand-logo" />
+        <div class="brand-copy">
+          <h1 id="project-title">ArboGame</h1>
+          <p id="project-description">Painel operacional do projeto.</p>
+        </div>
+      </div>
+
+      <nav class="top-nav">
+        <span class="top-nav-chip">Board</span>
+        <span class="top-nav-chip">Sprints</span>
+        <span class="top-nav-chip">Equipe</span>
+      </nav>
+
+      <div class="hero-metrics">
+        <article class="metric-card">
+          <span>Total</span>
+          <strong id="metric-total">0</strong>
+        </article>
+        <article class="metric-card">
+          <span>Em progresso</span>
+          <strong id="metric-progress">0</strong>
+        </article>
+        <article class="metric-card">
+          <span>Concluidos</span>
+          <strong id="metric-done">0</strong>
+        </article>
+      </div>
+
+      <div class="topbar-actions hero-actions">
+        <button id="refresh-btn" class="btn secondary">Atualizar</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="panel card-shell">
+        <h2>Membros da Equipe</h2>
+        <div id="members-list" class="members-grid"></div>
+      </section>
+
+      <section class="panel card-shell">
+        <h2>Sprints</h2>
+        <form id="new-sprint-form" class="sprint-form">
+          <label>
+            Nome da sprint *
+            <input name="name" required maxlength="120" placeholder="Sprint 3 - Multiplayer" />
+          </label>
+          <label>
+            Objetivo
+            <input name="goal" maxlength="200" placeholder="Entregar lobby e matchmaking" />
+          </label>
+          <label>
+            Estado
+            <select name="state">
+              <option value="planned">Planejada</option>
+              <option value="active">Ativa</option>
+              <option value="closed">Encerrada</option>
+            </select>
+          </label>
+          <label>
+            Inicio *
+            <input type="date" name="startDate" required />
+          </label>
+          <label>
+            Fim *
+            <input type="date" name="endDate" required />
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" type="submit">Criar sprint</button>
+          </div>
+        </form>
+        <div id="sprint-list" class="sprint-list"></div>
+      </section>
+
+      <section class="panel card-shell">
+        <h2>Novo Card</h2>
+        <form id="new-issue-form" class="grid-form">
+          <label>
+            Titulo *
+            <input name="title" required maxlength="120" />
+          </label>
+          <label>
+            Tipo *
+            <select name="type"></select>
+          </label>
+          <label>
+            Prioridade *
+            <select name="priority"></select>
+          </label>
+          <label>
+            Status *
+            <select name="status"></select>
+          </label>
+          <label>
+            Responsavel
+            <select name="assignee"></select>
+          </label>
+          <label>
+            Relator
+            <select name="reporter"></select>
+          </label>
+          <label>
+            Sprint
+            <select name="sprintId">
+              <option value="">Sem sprint</option>
+            </select>
+          </label>
+          <label>
+            Pontos
+            <input type="number" name="storyPoints" min="0" max="100" value="0" />
+          </label>
+          <label class="full">
+            Labels (separadas por virgula)
+            <input name="labels" placeholder="backend, economia" />
+          </label>
+          <label class="full">
+            Descricao
+            <textarea name="description" rows="3"></textarea>
+          </label>
+          <div class="full form-actions">
+            <button class="btn primary" type="submit">Criar ticket</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel card-shell">
+        <h2>Filtros</h2>
+        <div class="filters">
+          <input id="filter-search" placeholder="Buscar por id, titulo, label..." />
+          <select id="filter-status">
+            <option value="">Todos os status</option>
+          </select>
+          <select id="filter-priority">
+            <option value="">Todas as prioridades</option>
+          </select>
+          <select id="filter-assignee">
+            <option value="">Todos os responsaveis</option>
+          </select>
+          <select id="filter-sprint">
+            <option value="">Todas as sprints</option>
+          </select>
+          <button id="clear-filters-btn" class="btn secondary">Limpar filtros</button>
+        </div>
+      </section>
+
+      <section class="board-wrap">
+        <div class="board-header card-shell">
+          <h2>Quadro Kanban</h2>
+          <p>Arraste um card para mover entre etapas.</p>
+        </div>
+        <div id="board" class="board"></div>
+      </section>
+    </main>
+
+    <dialog id="issue-dialog">
+      <form id="issue-edit-form" class="dialog-content">
+        <header>
+          <h3 id="dialog-title">Editar ticket</h3>
+          <button type="button" id="close-dialog-btn" class="btn ghost">Fechar</button>
+        </header>
+        <input type="hidden" name="id" />
+        <label>
+          Titulo *
+          <input name="title" required maxlength="120" />
+        </label>
+        <label>
+          Tipo *
+          <select name="type"></select>
+        </label>
+        <label>
+          Status *
+          <select name="status"></select>
+        </label>
+        <label>
+          Prioridade *
+          <select name="priority"></select>
+        </label>
+        <label>
+          Responsavel
+          <select name="assignee"></select>
+        </label>
+        <label>
+          Relator
+          <select name="reporter"></select>
+        </label>
+        <label>
+          Sprint
+          <select name="sprintId">
+            <option value="">Sem sprint</option>
+          </select>
+        </label>
+        <label>
+          Pontos
+          <input type="number" name="storyPoints" min="0" max="100" />
+        </label>
+        <label>
+          Labels (virgula)
+          <input name="labels" />
+        </label>
+        <label>
+          Descricao
+          <textarea name="description" rows="4"></textarea>
+        </label>
+        <div class="dialog-actions">
+          <button type="submit" class="btn primary">Salvar</button>
+          <button type="button" id="delete-issue-btn" class="btn danger">Excluir</button>
+        </div>
+      </form>
+      <section class="comments">
+        <h4>Comentarios</h4>
+        <ul id="comments-list"></ul>
+        <form id="comment-form">
+          <select name="author"></select>
+          <textarea name="body" rows="2" placeholder="Novo comentario" required></textarea>
+          <button type="submit" class="btn secondary">Comentar</button>
+        </form>
+      </section>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="confirm-dialog">
+      <form method="dialog" class="confirm-content">
+        <h3 id="confirm-title">Confirmar acao</h3>
+        <p id="confirm-message"></p>
+        <div class="confirm-actions">
+          <button type="button" id="confirm-cancel-btn" class="btn secondary">Cancelar</button>
+          <button type="button" id="confirm-ok-btn" class="btn danger">Confirmar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="card-template">
+      <article class="issue-card" draggable="true">
+        <div class="issue-card-top">
+          <span class="chip chip-type"></span>
+          <strong class="issue-card-id"></strong>
+        </div>
+        <h4 class="issue-card-title"></h4>
+        <p class="issue-card-meta"></p>
+        <p class="issue-card-labels"></p>
+        <div class="issue-card-bottom">
+          <span class="chip chip-priority"></span>
+          <span class="chip chip-points"></span>
+        </div>
+      </article>
+    </template>
+
+    <template id="sprint-template">
+      <article class="sprint-card">
+        <div class="sprint-card-top">
+          <h3 class="sprint-name"></h3>
+          <span class="sprint-state"></span>
+        </div>
+        <p class="sprint-goal"></p>
+        <p class="sprint-dates"></p>
+        <div class="sprint-actions">
+          <button type="button" class="btn danger sprint-delete-btn">Excluir sprint</button>
+        </div>
+      </article>
+    </template>
+
+    <section id="toast-host" class="toast-host" aria-live="polite" aria-atomic="true"></section>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
